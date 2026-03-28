@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forest Biomass & Carbon Calculator — Thailand</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+:root {
+  --clr-yellow:  #FFF176; --clr-cream:   #EEECE1; --clr-red:     #C0504D;
+  --clr-green:   #9BBB59; --clr-purple:  #8064A2; --clr-teal:    #4BACC6;
+  --clr-orange:  #F79646; --clr-blue:    #4F81BD; --clr-ltgreen: #92D050;
+  --clr-dkblue:  #1F497D; --forest-dk:   #1B5E20; --forest-md:   #2E7D32;
+}
+body { background:#f0f4f0; font-family:'Segoe UI',sans-serif; font-size:0.93rem; }
+.topbar { background:linear-gradient(135deg,#1B5E20,#2E7D32); color:#fff; padding:12px 20px;
+  display:flex; align-items:center; gap:10px; }
+.topbar h1 { font-size:1.25rem; margin:0; font-weight:700; }
+
+/* ---- Class Cards ---- */
+.cls-card { border-radius:14px; padding:2rem 1.5rem; text-align:center; cursor:pointer;
+  transition:transform .2s, box-shadow .2s; border:3px solid transparent; color:#fff; }
+.cls-card:hover { transform:translateY(-4px); box-shadow:0 6px 24px rgba(0,0,0,.2); }
+.cls-card.selected { border-color:#fff; box-shadow:0 6px 24px rgba(0,0,0,.3); }
+.cls-forest  { background:linear-gradient(135deg,#2E7D32,#66BB6A); }
+.cls-tree    { background:linear-gradient(135deg,#0277BD,#4FC3F7); }
+.cls-plant   { background:linear-gradient(135deg,#4E342E,#A1887F); }
+.cls-card .icon { font-size:2.5rem; line-height:1; }
+.cls-card h4 { margin:.5rem 0 .25rem; font-size:1.2rem; }
+.cls-card p  { font-size:.8rem; opacity:.85; margin:0; }
+
+/* ---- Module Tabs ---- */
+.mod-tab { border-radius:20px; padding:5px 14px; margin:3px; cursor:pointer;
+  border:2px solid rgba(0,0,0,.15); font-size:.8rem; font-weight:600;
+  transition:all .2s; display:inline-block; }
+.mod-tab.active { border-color:#333 !important; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+
+/* ---- Species Buttons ---- */
+.sp-btn { border-radius:8px; padding:7px 12px; margin:3px; cursor:pointer;
+  border:2px solid transparent; font-size:.82rem; transition:all .2s;
+  display:inline-block; }
+.sp-btn:hover { transform:scale(1.02); border-color:#555; }
+.sp-btn.selected { border-color:#1B5E20 !important; font-weight:700;
+  box-shadow:0 2px 8px rgba(27,94,32,.35); }
+
+/* ---- Input Panel ---- */
+.panel { background:#fff; border-radius:12px; padding:1.25rem;
+  box-shadow:0 2px 10px rgba(0,0,0,.08); }
+.panel h6 { color:#555; border-bottom:1px solid #eee; padding-bottom:.4rem; margin-bottom:.8rem; }
+.form-label { font-size:.82rem; font-weight:600; color:#333; }
+.hint { font-size:.75rem; color:#888; }
+.formula-box { font-family:'Courier New',monospace; font-size:.75rem;
+  background:#f8f9fa; border:1px solid #dee2e6; border-radius:4px;
+  padding:4px 8px; margin:2px 0; }
+
+/* ---- Results ---- */
+.result-table td, .result-table th { padding:.45rem .7rem; font-size:.85rem; }
+.result-table .agb-row { background:#E8F5E9; font-weight:700; }
+.result-table .carbon-row { background:#E3F2FD; font-weight:700; }
+.result-table .co2-row { background:#FFF3E0; font-weight:700; }
+.big-num { font-size:1.6rem; font-weight:700; color:#1B5E20; }
+.carbon-badge { background:#1565C0; color:#fff; border-radius:8px; padding:.5rem 1rem; }
+.co2-badge    { background:#E65100; color:#fff; border-radius:8px; padding:.5rem 1rem; }
+
+.back-btn { font-size:.8rem; }
+.step-pill { display:inline-flex; align-items:center; justify-content:center;
+  width:28px; height:28px; border-radius:50%; background:#ddd; color:#666;
+  font-weight:700; font-size:.8rem; }
+.step-pill.active { background:#2E7D32; color:#fff; }
+.step-pill.done   { background:#81C784; color:#fff; }
+.progress-line { width:40px; height:2px; background:#ddd; }
+.progress-line.done { background:#81C784; }
+
+.hidden { display:none !important; }
+.ref-text { font-size:.75rem; color:#666; font-style:italic; }
+#noSpeciesMsg { color:#999; font-size:.88rem; }
+.unit-toggle { font-size:.75rem; background:#e8f5e9; border:1px solid #c8e6c9;
+  border-radius:12px; padding:2px 10px; cursor:pointer; user-select:none; }
+.unit-toggle.active { background:#2E7D32; color:#fff; border-color:#2E7D32; }
+.result-note { font-size:.72rem; color:#888; background:#fafafa; border-radius:4px;
+  padding:4px 8px; border-left:3px solid #ccc; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span style="font-size:1.6rem">🌲</span>
+  <div>
+    <h1>Forest Biomass &amp; Carbon Calculator</h1>
+    <div style="font-size:.78rem;opacity:.8">Thailand Forest Allometric Equations — forest_equations_V1</div>
+  </div>
+</div>
+
+<div class="container-fluid px-3 py-3" style="max-width:1100px">
+
+  <!-- Progress -->
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <span class="step-pill active" id="sp1">1</span>
+    <div class="progress-line" id="pl1"></div>
+    <span class="step-pill" id="sp2">2</span>
+    <div class="progress-line" id="pl2"></div>
+    <span class="step-pill" id="sp3">3</span>
+    <div class="text-muted ms-2" id="stepLabel" style="font-size:.82rem">Select vegetation class</div>
+  </div>
+
+  <!-- STEP 1: Class -->
+  <div id="step1">
+    <div class="row g-3 justify-content-center">
+      <div class="col-sm-4"><div class="cls-card cls-forest" onclick="selectClass('Forest')">
+        <div class="icon">🌲</div><h4>Forest</h4>
+        <p>Stand-level allometric equations — T-VER protocol, all forest types, DBH groupings</p>
+      </div></div>
+      <div class="col-sm-4"><div class="cls-card cls-tree" onclick="selectClass('Tree')">
+        <div class="icon">🌳</div><h4>Tree</h4>
+        <p>Individual-species equations — mangrove, bamboo, agriculture crops, plantation trees</p>
+      </div></div>
+      <div class="col-sm-4"><div class="cls-card cls-plant" onclick="selectClass('Plantation')">
+        <div class="icon">🌴</div><h4>Plantation</h4>
+        <p>Plantation forest (teak, eucalyptus) with integrated carbon conversion factor</p>
+      </div></div>
+    </div>
+    <div class="text-center mt-3 text-muted" style="font-size:.8rem">
+      Data source: 232-row equation database covering forests, trees, and plantations of Thailand
+    </div>
+  </div>
+
+  <!-- STEP 2: Species Selection -->
+  <div id="step2" class="hidden">
+    <div class="d-flex align-items-center mb-2 gap-2">
+      <button class="btn btn-sm btn-outline-secondary back-btn" onclick="goStep(1)">← Back</button>
+      <span class="fw-semibold" id="step2Title">Select species / forest type</span>
+    </div>
+    <div class="panel">
+      <div id="modTabs" class="mb-3"></div>
+      <div id="spList"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Input + Results -->
+  <div id="step3" class="hidden">
+    <div class="d-flex align-items-center mb-2 gap-2">
+      <button class="btn btn-sm btn-outline-secondary back-btn" onclick="goStep(2)">← Back</button>
+      <span class="fw-semibold" id="step3Title">Enter measurements</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-5">
+        <div class="panel h-100">
+          <h6>Species Information</h6>
+          <div id="spInfo"></div>
+          <hr class="my-2">
+          <h6>Measurement Inputs</h6>
+          <div id="inputFields"></div>
+          <button class="btn btn-success w-100 mt-3" onclick="calculate()">
+            🔢 Calculate Biomass &amp; Carbon
+          </button>
+        </div>
+      </div>
+      <div class="col-md-7">
+        <div class="panel" id="resultsPanel">
+          <div class="text-center text-muted py-5">
+            <div style="font-size:2.5rem">📊</div>
+            <div>Enter measurements and click Calculate</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="text-center text-muted py-2 mt-2" style="font-size:.75rem; border-top:1px solid #ddd;">
+  Forest Biomass &amp; Carbon Calculator | Source: forest_equations_V1.xlsx | Thailand Forestry Research
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ================================================================
+// HELPERS
+// ================================================================
+const pw = (b,e) => Math.pow(b,e);
+const ex = Math.exp;
+const ln = Math.log;
+const CARBON = 0.4899;  // carbon fraction (วสันต์ จันทร์แดง et al., 2553)
+const CO2FAC = 44/12;   // CO2 equivalent factor
+
+// ================================================================
+// SPECIES DATABASE  (each entry has: id, cls, sub, name, nameLocal,
+//   bg, tx, inputs[], ref, formulaHint, calc(D,H,D0,HRP)->results[])
+// ================================================================
+// Each entry: { id, cls, sub, name, nameLocal, color, bg, inputs[], ref, calc(D,H,D0,HRP) }
+// calc() returns array of { var, label, value (kg), isTotal }
+// inputs: subset of ['D','H','D0','HRP']
+const DB = [];
+function add(o){ DB.push(o); }
+
+// --- colour helpers matching Office theme from Excel ---
+const BG = {
+  yellow:'#FFF9C4', cream:'#EEECE1', red:'#C0504D', green:'#9BBB59',
+  purple:'#8064A2', teal:'#4BACC6', orange:'#F79646', blue:'#4F81BD',
+  ltgreen:'#92D050', dkblue:'#1F497D', white:'#F5F5F5'
+};
+const TX = { yellow:'#333', cream:'#333', red:'#fff', green:'#333',
+  purple:'#fff', teal:'#fff', orange:'#333', blue:'#fff',
+  ltgreen:'#333', dkblue:'#fff', white:'#333' };
+
+// ================================================================
+// FOREST > T-VER
+// ================================================================
+add({ id:'tver_gen', cls:'Forest', sub:'T-VER', name:'General / All Forest Types', nameLocal:'ทั่วไป (ป่าทุกประเภท)',
+  bg:BG.yellow, tx:TX.yellow, inputs:['D','H'], ref:'Ogawa et al. (1965)',
+  fml:'WS=0.0396(D²H)^0.9326 | WB=0.003487(D²H)^1.027 | WL=(WS+WB+0.025)/28',
+  calc(D,H){
+    const WS = 0.0396*pw(D*D*H,0.9326);
+    const WB = 0.003487*pw(D*D*H,1.027);
+    const WL = (WS+WB+0.025)/28;
+    const GB = WS+WB+WL;
+    return [
+      {v:'WS',l:'Stem Biomass',val:WS},
+      {v:'WB',l:'Branch Biomass',val:WB},
+      {v:'WL',l:'Leaf Biomass',val:WL},
+      {v:'GB',l:'Total Aboveground Biomass (GB)',val:GB,total:true}
+    ];
+  }
+});
+
+add({ id:'tver_mgv', cls:'Forest', sub:'T-VER', name:'Mangrove (General)', nameLocal:'ป่าชายเลน (ทั่วไป)',
+  bg:BG.cream, tx:TX.cream, inputs:['D','H'], ref:'Komiyama et al. (1987)',
+  fml:'WS=0.05466(D²H)^0.945 | WB=0.01579(D²H)^0.9124 | WL=0.0678(D²H)^0.5806',
+  calc(D,H){
+    const WS = 0.05466*pw(D*D*H,0.945);
+    const WB = 0.01579*pw(D*D*H,0.9124);
+    const WL = 0.0678*pw(D*D*H,0.5806);
+    const WT = WS+WB+WL;
+    return [
+      {v:'WS',l:'Stem Biomass',val:WS},
+      {v:'WB',l:'Branch Biomass',val:WB},
+      {v:'WL',l:'Leaf Biomass',val:WL},
+      {v:'WT',l:'Total Aboveground Biomass (WT)',val:WT,total:true}
+    ];
+  }
+});
+
+add({ id:'tver_palm', cls:'Forest', sub:'T-VER', name:'Palm', nameLocal:'ปาล์ม',
+  bg:BG.red, tx:TX.red, inputs:['H'], ref:'Pearson et al. (2005)',
+  calc(D,H){
+    const WT = 6.666 + 12.826*(pw(H,0.5)*ln(H));
+    return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'tver_bong', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่บงป่า', nameLocal:'ไผ่บงป่า',
+  bg:BG.teal, tx:TX.teal, inputs:['D'], ref:'อิทธิพงศ์ วรรณลังกา และคณะ (2557)',
+  calc(D){
+    const WT = 0.1466*pw(D,0.7187);
+    return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'tver_bongdam', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่บงดำ', nameLocal:'ไผ่บงดำ',
+  bg:BG.white, tx:TX.white, inputs:['D'], ref:'Kutintara et al. (1995)',
+  calc(D){
+    const WT = 0.49522*pw(D,0.8726);
+    return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'tver_khaolam', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่ข้าวหลาม', nameLocal:'ไผ่ข้าวหลาม',
+  bg:BG.purple, tx:TX.purple, inputs:['D'], ref:'Kutintara et al. (1995)',
+  calc(D){
+    const WT = 0.17446*pw(D,1.0437);
+    return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'tver_rai', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่ไร่ และไผ่ผาก', nameLocal:'ไผ่ไร่/ไผ่ผาก',
+  bg:BG.white, tx:TX.white, inputs:['D'], ref:'Kutintara et al. (1995)',
+  calc(D){
+    const WT = 0.2425*pw(D,1.0751);
+    return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'tver_liana', cls:'Forest', sub:'T-VER', name:'Liana', nameLocal:'เถาวัลย์',
+  bg:BG.orange, tx:TX.orange, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2554)',
+  calc(D){
+    const WT = 0.8622*pw(D,2.021);
+    return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+// ================================================================
+// FOREST > DBH > 4.5 cm
+// ================================================================
+add({ id:'f45_dry', cls:'Forest', sub:'DBH > 4.5 cm', name:'Dry Evergreen / Hill Evergreen', nameLocal:'ป่าดิบแล้ง / ป่าดิบเขา',
+  bg:BG.white, tx:TX.white, inputs:['D','H'], ref:'Tsutsumi et al. (1983)',
+  calc(D,H){
+    const WS = 0.0509*pw(D*D*H,0.919);
+    const WB = 0.00893*pw(D*D*H,0.977);
+    const WL = 0.0140*pw(D*D*H,0.669);
+    const WT = WS+WB+WL;
+    const WR = 0.0313*pw(D*D*H,0.805);
+    return [
+      {v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},
+      {v:'WR',l:'Root Biomass (WR)',val:WR}
+    ];
+  }
+});
+
+add({ id:'f45_tropical', cls:'Forest', sub:'DBH > 4.5 cm', name:'Tropical Evergreen', nameLocal:'ป่าดิบชื้น',
+  bg:BG.red, tx:TX.red, inputs:['D','H'], ref:'Ogawa et al. (1965)',
+  calc(D,H){
+    const WS = 0.0396*pw(D*D*H,0.9326);
+    const WB = 0.006003*pw(D*D*H,1.027);
+    const WL = (WS+WB+0.025)/28;
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f45_mixed', cls:'Forest', sub:'DBH > 4.5 cm', name:'Mixed Deciduous / Dry Dipterocarp', nameLocal:'ป่าเบญจพรรณ / ป่าเต็งรัง',
+  bg:BG.cream, tx:TX.cream, inputs:['D','H'], ref:'Ogawa et al. (1965)',
+  calc(D,H){
+    const WS = 0.0396*pw(D*D*H,0.933);
+    const WB = 0.00349*pw(D*D*H,1.030);
+    const WL = (WS+WB+0.025)/28;
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f45_pine2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Pine (2-needle) — สนสองใบ', nameLocal:'สนสองใบ',
+  bg:BG.red, tx:TX.red, inputs:['D','H'], ref:'สุนันทา ขจรศรีชล (2531)',
+  calc(D,H){
+    const WS = 0.2141*pw(D*D*H,0.9814);
+    const WB = 0.00002*pw(D*D*H,1.4561);
+    const WL = 0.00072*pw(D*D*H,1.0138);
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f45_pine3', cls:'Forest', sub:'DBH > 4.5 cm', name:'Pine (3-needle) — สนสามใบ', nameLocal:'สนสามใบ',
+  bg:BG.purple, tx:TX.purple, inputs:['D','H'], ref:'สุนันทา ขจรศรีชล (2531)',
+  calc(D,H){
+    const WS = 0.02698*pw(D*D*H,0.946);
+    const WB = 0.00018*pw(D*D*H,1.455);
+    const WL = 0.00072*pw(D*D*H,1.094);
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f45_rhizo', cls:'Forest', sub:'DBH > 4.5 cm', name:'Rhizophora spp.', nameLocal:'โกงกางใบใหญ่ (Rhizophora)',
+  bg:BG.yellow, tx:TX.yellow, inputs:['D','H'], ref:'Komiyama et al. (1987)',
+  calc(D,H){
+    const WS = 0.05466*pw(D*D*H,0.945);
+    const WB = 0.01579*pw(D*D*H,0.9124);
+    const WL = 0.0678*pw(D*D*H,0.5806);
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f45_omangrove', cls:'Forest', sub:'DBH > 4.5 cm', name:'Other Mangrove Species', nameLocal:'ชายเลนชนิดอื่น',
+  bg:BG.green, tx:TX.green, inputs:['D','H'], ref:'Komiyama et al. (1987)',
+  calc(D,H){
+    const WS = 0.0449*pw(D*D*H,0.9549);
+    const WB = 0.02412*pw(D*D*H,0.8649);
+    const WL = 0.09422*pw(D*D*H,0.5439);
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f45_ruak', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่รวก', nameLocal:'ไผ่รวก',
+  bg:BG.white, tx:TX.white, inputs:['D'], ref:'Suwannapinunt (1983)',
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.22187*pw(D,2.2749),total:true}]; }
+});
+
+add({ id:'f45_bongdam2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่บงดำ', nameLocal:'ไผ่บงดำ',
+  bg:BG.red, tx:TX.red, inputs:['D'], ref:'Kutintara et al. (1995)',
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.49522*pw(D,0.8726),total:true}]; }
+});
+
+add({ id:'f45_khaolam2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่ข้าวหลาม', nameLocal:'ไผ่ข้าวหลาม',
+  bg:BG.white, tx:TX.white, inputs:['D'], ref:'Kutintara et al. (1995)',
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.17446*pw(D,1.0437),total:true}]; }
+});
+
+add({ id:'f45_rai2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่ไร่/ไผ่ผาก', nameLocal:'ไผ่ไร่ และไผ่ผาก',
+  bg:BG.green, tx:TX.green, inputs:['D'], ref:'Kutintara et al. (1995)',
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.2425*pw(D,1.0751),total:true}]; }
+});
+
+// ================================================================
+// FOREST > DBH < 4.5 cm
+// ================================================================
+add({ id:'f_lt45_dry', cls:'Forest', sub:'DBH < 4.5 cm', name:'Dry Evergreen (small stems)', nameLocal:'ป่าดิบแล้ง (ลำต้นเล็ก)',
+  bg:BG.white, tx:TX.white, inputs:['D','H'], ref:'มานพ อิสสะรีย์ (2525)',
+  calc(D,H){
+    const WS = 89.3059*D*D*pw(H,0.66513);
+    const WB = 15.3063*D*D*pw(H,0.58255);
+    const WL = 0.0140*D*D*pw(H,0.44363);
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'f_lt45_other', cls:'Forest', sub:'DBH < 4.5 cm', name:'Other Forests (small stems)', nameLocal:'ป่าอื่นๆ (ลำต้นเล็ก)',
+  bg:BG.red, tx:TX.red, inputs:['D','H'], ref:'ธิติ วิสารัตน์ และชลธิดา เชิญขุนทด (2547)',
+  calc(D,H){
+    const WS = 0.0702*D*D*pw(H,0.8737);
+    const WB = 0.0093*D*D*pw(H,0.9403);
+    const WL = 0.0244*D*D*pw(H,1.0517);
+    const WT = WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+// ================================================================
+// TREE > MANGROVE (individual species, log-linear equations)
+// ================================================================
+const mgvSp = [
+  {id:'mgv_avialba',  name:'Avicennia alba',       bg:BG.blue,   tx:TX.blue,
+    WS:[0.5063,0.0442], WB:[0.2619,0.0315], WL:[0.0940,0.0310]},
+  {id:'mgv_avioff',   name:'Avicennia officinalis', bg:BG.green,  tx:TX.green,
+    WS:[0.3389,0.0570], WB:[0.0775,0.0403], WL:[0.1119,0.0392]},
+  {id:'mgv_brugcyl',  name:'Bruguiera cylindrical', bg:BG.yellow, tx:TX.yellow,
+    WS:[0.4754,0.0413], WB:[-0.4325,0.0382], WL:[-0.1984,0.0349]},
+  {id:'mgv_brugpar',  name:'Bruguiera parviflora',  bg:BG.white,  tx:TX.white,
+    WS:[0.3470,0.458],  WB:[-0.6811,0.0659], WL:[-0.2965,0.0393]},
+  {id:'mgv_bruggym',  name:'Bruguiera gymnorrhiza', bg:BG.blue,   tx:TX.blue,
+    WS:[0.4703,0.0437], WB:[-0.0443,0.0551], WL:[0.1266,0.0283]},
+  {id:'mgv_ceriops',  name:'Ceriops tagal',         bg:BG.purple, tx:TX.purple,
+    WS:[0.2432,0.0587], WB:[-0.4632,0.0625], WL:[-0.4187,0.0529]},
+  {id:'mgv_rhizapi',  name:'Rhizophora apiculata',  bg:BG.cream,  tx:TX.cream,
+    WS:[0.8074,0.0289], WB:[-0.2344,0.0424], WL:[-0.0682,0.0277],
+    Wpr:[-0.7566,0.0311]},
+  {id:'mgv_rhizmuc',  name:'Rhizophora mucronata',  bg:BG.green,  tx:TX.green,
+    WS:[0.6171,0.0357], WB:[-0.3606,0.0467], WL:[-0.3778,0.0360],
+    Wpr:[-0.6908,0.0496]},
+  {id:'mgv_sonalba',  name:'Sonneratia alba',        bg:BG.purple, tx:TX.purple,
+    WS:[0.2520,0.0507], WB:[-0.3567,0.0449], WL:[-0.4976,0.0418]},
+  {id:'mgv_xylgran',  name:'Xylocarpus granatum',   bg:BG.teal,   tx:TX.teal,
+    WS:[0.2374,0.0589], WB:[-0.5046,0.0637], WL:[-0.5179,0.0558]},
+  {id:'mgv_xylmol',   name:'Xylocarpus moluccensis', bg:BG.yellow, tx:TX.yellow,
+    WS:[0.2572,0.0566], WB:[-0.7659,0.0562], WL:[-0.7823,0.0511]}
+];
+
+mgvSp.forEach(s => {
+  add({ id:s.id, cls:'Tree', sub:'Mangrove', name:s.name, nameLocal:'', bg:s.bg, tx:s.tx,
+    inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2553/2554)',
+    calc(D,H){
+      const x = D*D*H;
+      const WS = ex(s.WS[0]+s.WS[1]*ln(x));
+      const WB = ex(s.WB[0]+s.WB[1]*ln(x));
+      const WL = ex(s.WL[0]+s.WL[1]*ln(x));
+      const res = [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL}];
+      if(s.Wpr){ res.push({v:'Wpr',l:'Prop Roots (Wpr)',val:ex(s.Wpr[0]+s.Wpr[1]*ln(x))}); }
+      const WT = WS+WB+WL+(s.Wpr? ex(s.Wpr[0]+s.Wpr[1]*ln(x)):0);
+      res.push({v:'WT',l:'Total Aboveground (WT)',val:WT,total:true});
+      return res;
+    }
+  });
+});
+
+// ================================================================
+// TREE > LIANA
+// ================================================================
+add({ id:'tree_liana', cls:'Tree', sub:'Liana', name:'Liana / Climbing Plants', nameLocal:'เถาวัลย์',
+  bg:BG.orange, tx:TX.orange, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2554)',
+  calc(D){ return [{v:'AGB',l:'Aboveground Biomass (AGB)',val:0.8622*pw(D,2.021),total:true}]; }
+});
+
+// ================================================================
+// TREE > BAMBOO
+// ================================================================
+add({ id:'bam_thyrso', cls:'Tree', sub:'Bamboo', name:'Thyrsostachys siamensis (ไผ่รวก)', nameLocal:'ไผ่รวก',
+  bg:BG.yellow, tx:TX.yellow, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H){
+    const WC = 0.0691512*pw(D*D*H,0.793);
+    const WT = 0.0883689*pw(D*D*H,0.7703);
+    const WBL = WT-WC;
+    return [{v:'WC',l:'Culm (WC)',val:WC},{v:'WB+L',l:'Branch+Leaf (WB+L)',val:WBL},
+      {v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'bam_galbo', cls:'Tree', sub:'Bamboo', name:'Gigantochloa albociliata', nameLocal:'',
+  bg:BG.green, tx:TX.green, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const x=D*D;
+    const WT = ex(-0.6152+1.0951*ln(x));
+    const WC = ex(-0.8457+1.1939*ln(x));
+    return [{v:'WC',l:'Culm (WC)',val:WC},{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'bam_ghask', cls:'Tree', sub:'Bamboo', name:'Gigantochloa hasskarliana', nameLocal:'',
+  bg:BG.teal, tx:TX.teal, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const x=D*D;
+    const WT = ex(-0.6464+1.0214*ln(x));
+    const WC = ex(-0.9527+1.1257*ln(x));
+    return [{v:'WC',l:'Culm (WC)',val:WC},{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'bam_btulda', cls:'Tree', sub:'Bamboo', name:'Bambusa tulda (ไผ่ผาก)', nameLocal:'ไผ่ผาก',
+  bg:BG.purple, tx:TX.purple, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const x=D*D;
+    const WT = ex(-0.3052+0.8726*ln(x));
+    const WC = ex(-0.6817+1.0596*ln(x));
+    return [{v:'WC',l:'Culm (WC)',val:WC},{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'bam_cephalo', cls:'Tree', sub:'Bamboo', name:'Cephalostachyum pergracile (ไผ่ข้าวหลาม)', nameLocal:'ไผ่ข้าวหลาม',
+  bg:BG.teal, tx:TX.teal, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const x=D*D;
+    const WT = ex(-0.7583+1.0487*ln(x));
+    const WC = ex(-1.0242+1.1556*ln(x));
+    return [{v:'WC',l:'Culm (WC)',val:WC},{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'bam_ruak', cls:'Tree', sub:'Bamboo', name:'ไผ่รวก (Pai Ruak)', nameLocal:'ไผ่รวก',
+  bg:BG.green, tx:TX.green, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const WC=0.3121*pw(D,1.6116), WB=0.0480*pw(D,2.1613), WL=0.0457*pw(D,1.3303);
+    const AGB=0.4174*pw(D,1.6645);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_bongdam', cls:'Tree', sub:'Bamboo', name:'ไผ่บงดำ (Pai Bong Dam)', nameLocal:'ไผ่บงดำ',
+  bg:BG.teal, tx:TX.teal, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const WC=0.3845*pw(D,1.8644), WB=0.0070*pw(D,2.2825), WL=0.0082*pw(D,2.0603);
+    const AGB=0.3243*pw(D,2.1167);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_paipa', cls:'Tree', sub:'Bamboo', name:'ไผ่ป่า (Pai Pa)', nameLocal:'ไผ่ป่า',
+  bg:BG.purple, tx:TX.purple, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const WC=0.3044*pw(D,1.7526), WB=0.0795*pw(D,2.0827), WL=0.0088*pw(D,1.1385);
+    const AGB=0.3939*pw(D,1.8325);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_sangdoi', cls:'Tree', sub:'Bamboo', name:'ไผ่ซางดอย (Pai Sang Doi)', nameLocal:'ไผ่ซางดอย',
+  bg:BG.orange, tx:TX.orange, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const WC=0.3044*pw(D,1.7526), WB=0.0795*pw(D,2.0827), WL=0.0088*pw(D,1.1385);
+    const AGB=0.3939*pw(D,1.8325);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_bongpa', cls:'Tree', sub:'Bamboo', name:'ไผ่บงป่า (Pai Bong Pa)', nameLocal:'ไผ่บงป่า',
+  bg:BG.teal, tx:TX.teal, inputs:['D','H'], ref:'อิทธิพงศ์ วรรณลังกา และคณะ (2557)',
+  calc(D,H){
+    const WC=0.0867*pw(D*D*H,0.7822);
+    const WB=Math.max(0, 0.1384*pw(D*D*H,0.7232)-WC);
+    const WL=Math.max(0, 0.0940*pw(D*D*H,0.7748)-WC);
+    const AGB=0.1466*pw(D*D*H,0.7187);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_bongyai', cls:'Tree', sub:'Bamboo', name:'ไผ่บงใหญ่/ไผ่บงคาย (Pai Bong Yai)', nameLocal:'ไผ่บงใหญ่/ไผ่บงคาย',
+  bg:BG.teal, tx:TX.teal, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H){
+    const WC=0.0136*pw(D*D*H,0.9548);
+    const WB=Math.max(0, 0.0184*pw(D*D*H,0.9293)-WC);
+    const WL=Math.max(0, 0.0174*pw(D*D*H,0.9313)-WC);
+    const AGB=0.0222*pw(D*D*H,0.9098);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_hok', cls:'Tree', sub:'Bamboo', name:'ไผ่หก (Pai Hok)', nameLocal:'ไผ่หก',
+  bg:BG.orange, tx:TX.orange, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H){
+    const WC=0.0834*pw(D*D*H,0.765);
+    const WB=Math.max(0, 0.1671*pw(D*D*H,0.6832)-WC);
+    const WL=Math.max(0, 0.1107*pw(D*D*H,0.7358)-WC);
+    const AGB=0.2061*pw(D*D*H,0.6627);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_wan', cls:'Tree', sub:'Bamboo', name:'ไผ่หวานอ่างขาง (Pai Wan Ang Khang)', nameLocal:'ไผ่หวานอ่างขาง',
+  bg:BG.teal, tx:TX.teal, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H){
+    const WC=0.0324*pw(D*D*H,0.834);
+    const WB=Math.max(0, 0.0476*pw(D*D*H,0.7947)-WC);
+    const WL=Math.max(0, 0.0446*pw(D*D*H,0.7962)-WC);
+    const AGB=0.0627*pw(D*D*H,0.763);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_hom', cls:'Tree', sub:'Bamboo', name:'ไผ่หอม (Pai Hom)', nameLocal:'ไผ่หอม',
+  bg:BG.red, tx:TX.red, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const WC=0.111*pw(D,2.147), WB=0.028*pw(D,1.551), WL=0.038*pw(D,1.452);
+    const AGB=0.189*pw(D,1.956);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+add({ id:'bam_sang', cls:'Tree', sub:'Bamboo', name:'ไผ่ซาง (Pai Sang)', nameLocal:'ไผ่ซาง',
+  bg:BG.red, tx:TX.red, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H){
+    const WC=0.021*pw(D,1.875), WB=0.076*pw(D,1.455), WL=0.034*pw(D,1.364);
+    const AGB_D=0.308*pw(D,1.767);
+    const AGB_H=0.0001*pw(H,4.228);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'AGB(D)',l:'Total AGB by Diameter',val:AGB_D,total:true},
+      {v:'AGB(H)',l:'Total AGB by Height',val:AGB_H}];
+  }
+});
+
+add({ id:'bam_lailo', cls:'Tree', sub:'Bamboo', name:'ไผ่ไล่ลอ / ไผ่บงดา (Pai Lai Lo)', nameLocal:'ไผ่ไล่ลอ / ไผ่บงดา',
+  bg:BG.purple, tx:TX.purple, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){
+    const WC=0.114*pw(D,2.38), WB=0.017*pw(D,1.96);
+    const AGB=0.131*pw(D,2.351);
+    return [{v:'WC',l:'Culm',val:WC},{v:'WB',l:'Branch',val:WB},
+      {v:'AGB',l:'Total Aboveground (AGB)',val:AGB,total:true}];
+  }
+});
+
+// ================================================================
+// TREE > AGRICULTURE
+// ================================================================
+add({ id:'agr_banana', cls:'Tree', sub:'Agriculture', name:'Banana — กล้วยน้ำว้า', nameLocal:'กล้วยน้ำว้า',
+  bg:BG.green, tx:TX.green, inputs:['D'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D){ return [{v:'AGB',l:'Aboveground Biomass (AGB)',val:0.0303*pw(D,2.1345),total:true}]; }
+});
+
+add({ id:'agr_tao', cls:'Tree', sub:'Agriculture', name:'Fishtail Palm — ต๋าว', nameLocal:'ต๋าว',
+  bg:BG.orange, tx:TX.orange, inputs:['HRP'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H,D0,HRP){ return [{v:'AGB',l:'Aboveground Biomass (AGB)',val:12.0478*pw(HRP,1.6869),total:true}]; }
+});
+
+add({ id:'agr_ramb', cls:'Tree', sub:'Agriculture', name:'Rambutan — เงาะ', nameLocal:'เงาะ',
+  bg:BG.blue, tx:TX.blue, inputs:['D0'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H,D0){
+    const WS=0.0083*pw(D0,3.1573), WB=0.00002*pw(D0,4.4921), WL=0.0033*pw(D0,2.6908);
+    const WT=0.0065*pw(D0,3.3102);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'agr_durian', cls:'Tree', sub:'Agriculture', name:'Durian — ทุเรียน', nameLocal:'ทุเรียน',
+  bg:BG.teal, tx:TX.teal, inputs:['D0'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H,D0){
+    const WS=0.0051*pw(D0,2.982), WB=0.0046*pw(D0,2.4675), WL=0.0101*pw(D0,1.9889);
+    const WT=0.0078*pw(D0,2.9605);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'agr_mango', cls:'Tree', sub:'Agriculture', name:'Mangosteen — มังคุด', nameLocal:'มังคุด',
+  bg:BG.orange, tx:TX.orange, inputs:['D0'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H,D0){
+    const WS=0.0492*pw(D0,2.6368), WB=0.1635*pw(D0,1.9872), WL=0.0795*pw(D0,2.0795);
+    const WT=0.2164*pw(D0,2.3548);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'agr_longkong', cls:'Tree', sub:'Agriculture', name:'Longkong — ลองกอง', nameLocal:'ลองกอง',
+  bg:BG.white, tx:TX.white, inputs:['D0'], ref:'ชิงชัย วิริยะบัญชา (2554)',
+  calc(D,H,D0){
+    const WS=0.0090*pw(D0,2.9849), WB=0.0031*pw(D0,2.9358), WL=0.0084*pw(D0,2.2572);
+    const WT=0.0234*pw(D0,2.768);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
+  }
+});
+
+// ================================================================
+// TREE > RUBBER FAMILY (Dipterocarp)
+// ================================================================
+add({ id:'rub_pluang', cls:'Tree', sub:'Rubber Family', name:'พลวง (Dipterocarpus tuberculatus)', nameLocal:'พลวง',
+  bg:BG.white, tx:TX.white, inputs:['D0','H'], ref:'ลักษณา วงศ์สิงห์ และคณะ (2555)',
+  calc(D,H,D0){
+    const WAG=0.572*pw(D0*H,0.99), WBG=30.10*pw(D0*H,0.52);
+    return [{v:'WAG',l:'Aboveground Biomass (WAG)',val:WAG,total:true},
+      {v:'WBG',l:'Belowground Biomass (WBG)',val:WBG}];
+  }
+});
+
+add({ id:'rub_hiang', cls:'Tree', sub:'Rubber Family', name:'เหียง (Dipterocarpus obtusifolius)', nameLocal:'เหียง',
+  bg:BG.red, tx:TX.red, inputs:['D0','H'], ref:'ลักษณา วงศ์สิงห์ และคณะ (2555)',
+  calc(D,H,D0){
+    const WAG=0.212*pw(D0*H,1.29), WBG=0.843*pw(D0*H,1.34);
+    return [{v:'WAG',l:'Aboveground Biomass (WAG)',val:WAG,total:true},
+      {v:'WBG',l:'Belowground Biomass (WBG)',val:WBG}];
+  }
+});
+
+add({ id:'rub_teng', cls:'Tree', sub:'Rubber Family', name:'เต็ง (Shorea obtusa)', nameLocal:'เต็ง',
+  bg:BG.white, tx:TX.white, inputs:['D0','H'], ref:'ลักษณา วงศ์สิงห์ และคณะ (2555)',
+  calc(D,H,D0){
+    const WAG=0.098*pw(D0*H,0.74), WBG=1.608*pw(D0*H,1.18);
+    return [{v:'WAG',l:'Aboveground Biomass (WAG)',val:WAG,total:true},
+      {v:'WBG',l:'Belowground Biomass (WBG)',val:WBG}];
+  }
+});
+
+// ================================================================
+// TREE > DEAD TREE
+// ================================================================
+add({ id:'dead_mel', cls:'Tree', sub:'Dead Tree', name:'Melaleuca (dead standing)', nameLocal:'เสม็ด (ตายยืนต้น)',
+  bg:BG.cream, tx:TX.cream, inputs:['D','H'], ref:'ขรรค์ชัย รื้นนาค และคณะ (2558)',
+  calc(D,H){ return [{v:'W',l:'Dead Wood Biomass (W)',val:0.0381*pw(D*D*H,0.8952),total:true}]; }
+});
+
+// ================================================================
+// TREE > MELALEUCA
+// ================================================================
+add({ id:'mel_caj', cls:'Tree', sub:'Melaleuca', name:'Melaleuca cajuputi (เสม็ด)', nameLocal:'เสม็ด',
+  bg:BG.green, tx:TX.green, inputs:['D'], ref:'Wanthongchai (2013)',
+  calc(D){
+    const WS=105.04*pw(D,1.9916), WB=20.059*pw(D,2.1419), WL=6.247*pw(D,2.9918);
+    const WT=WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+add({ id:'mel_caj2', cls:'Tree', sub:'Melaleuca', name:'Melaleuca cajuputi trees (all components)', nameLocal:'เสม็ด (รวมทุกส่วน)',
+  bg:BG.white, tx:TX.white, inputs:['D','H'], ref:'Tange et al. (2000)',
+  calc(D,H){ return [{v:'W',l:'Total Biomass (W)',val:0.062*pw(D*D*H,0.91),total:true}]; }
+});
+
+// ================================================================
+// TREE > OTHER TREES
+// ================================================================
+add({ id:'other_nonmel', cls:'Tree', sub:'Other Trees', name:'Non-Melaleuca (Other tree species)', nameLocal:'ไม้ชนิดอื่น (ไม่ใช่เสม็ด)',
+  bg:BG.cream, tx:TX.cream, inputs:['D','H'], ref:'Ogawa et al. (1965)',
+  calc(D,H){
+    const WS=0.0396*pw(D*D*H,0.9326);
+    const WB=0.006002*pw(D*D*H,1.027);
+    const WTC=WS+WB;
+    const WL=(WTC+0.025)/18;
+    const WT=WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+// ================================================================
+// TREE > FOREST (individual plantation-type trees)
+// ================================================================
+add({ id:'tr_eucalyptus', cls:'Tree', sub:'Forest', name:'Eucalyptus (สายพันธุ์ต่างๆ)', nameLocal:'ยูคาลิปตัส',
+  bg:BG.ltgreen, tx:TX.ltgreen, inputs:['D','H'], ref:'ประดิษฐ์ ตรีพัฒนาสุวรรณ และคณะ (2551)',
+  calc(D,H){
+    const WS=0.0305*pw(D*D*H,0.9862), WB=0.0008*pw(D*D*H,1.2698);
+    const WL=0.0003*pw(D*D*H,1.1666), WR=0.0121*pw(D*D*H,0.969);
+    const Wr=0.0104*pw(D*D*H,0.9456), WT=0.0296*pw(D*D*H,1.028);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},
+      {v:'WR',l:'Coarse Root (WR)',val:WR},{v:'Wr',l:'Fine Root (Wr)',val:Wr}];
+  }
+});
+
+add({ id:'tr_rubber', cls:'Tree', sub:'Forest', name:'Rubber Tree — ยางพารา', nameLocal:'ยางพารา',
+  bg:BG.blue, tx:TX.blue, inputs:['D','H'], ref:'ประดิษฐ์ ตรีพัฒนาสุวรรณ และคณะ (2551)',
+  calc(D,H){
+    const WS=0.0804*pw(D*D*H,0.8341);
+    const WL=0.000008*pw(D*D*H,1.4986);
+    const WT=0.0046*pw(D*D*H,1.2046);
+    const WB=Math.max(0, WT-WS-WL);
+    const WR=0.0005*pw(D*D*H,1.269);
+    const Wr=0.0022*pw(D*D*H,1.0296);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch (derived)',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},
+      {v:'WR',l:'Coarse Root (WR)',val:WR},{v:'Wr',l:'Fine Root (Wr)',val:Wr}];
+  }
+});
+
+add({ id:'tr_neem', cls:'Tree', sub:'Forest', name:'Neem — สะเดา', nameLocal:'สะเดา',
+  bg:BG.purple, tx:TX.purple, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0410*pw(D*D*H,0.9148), WL=0.0023*pw(D*D*H,0.9388);
+    const WB=0.0018*pw(D*D*H,1.1037), WT=0.0435*pw(D*D*H,0.937);
+    const VS=0.000098*pw(D*D*H,0.8799);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'tr_takhian', cls:'Tree', sub:'Forest', name:'Takhian — ตะเคียน', nameLocal:'ตะเคียน',
+  bg:BG.teal, tx:TX.teal, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0223*pw(D*D*H,1.0199), WL=0.0032*pw(D*D*H,1.0477);
+    const WB=0.0027*pw(D*D*H,1.2228), WT=0.0241*pw(D*D*H,1.0842);
+    const VS=0.000077*pw(D*D*H,0.9091);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'tr_pruk', cls:'Tree', sub:'Forest', name:'Pruk — ประดู่', nameLocal:'ประดู่',
+  bg:BG.teal, tx:TX.teal, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0661*pw(D*D*H,0.8527), WL=0.0041*pw(D*D*H,0.8646);
+    const WB=0.0014*pw(D*D*H,1.2497), WT=0.0534*pw(D*D*H,0.938);
+    const VS=0.000157*pw(D*D*H,0.8055);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'tr_leucaena', cls:'Tree', sub:'Forest', name:'Leucaena — กระถินณรงค์', nameLocal:'กระถินณรงค์',
+  bg:BG.dkblue, tx:TX.dkblue, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0185*pw(D*D*H,0.9742), WL=0.0011*pw(D*D*H,0.868);
+    const WB=0.00014*pw(D*D*H,1.2761), WT=0.0177*pw(D*D*H,0.9945);
+    const VS=0.000082*pw(D*D*H,0.9085);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'tr_eucam', cls:'Tree', sub:'Forest', name:'Eucalyptus camaldulensis', nameLocal:'ยูคาลิปตัส คามาลดูเลนซิส',
+  bg:BG.purple, tx:TX.purple, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0239*pw(D*D*H,0.9778), WL=0.0030*pw(D*D*H,0.8088);
+    const WB=0.0035*pw(D*D*H,0.9345), WT=0.0292*pw(D*D*H,0.969);
+    const VS=0.000211*pw(D*D*H,0.79);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'tr_teak', cls:'Tree', sub:'Forest', name:'Teak — สัก', nameLocal:'สัก',
+  bg:BG.orange, tx:TX.orange, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0441*pw(D*D*H,0.8445), WL=0.0026*pw(D*D*H,1.0066);
+    const WB=0.0012*pw(D*D*H,1.0712), WT=0.0454*pw(D*D*H,0.8801);
+    const VS=0.000090*pw(D*D*H,0.894);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'tr_acacia', cls:'Tree', sub:'Forest', name:'Acacia — กระถิน/อะเคเซีย', nameLocal:'อะเคเซีย',
+  bg:BG.ltgreen, tx:TX.ltgreen, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และคณะ (2547)',
+  calc(D,H){
+    const WS=0.0258*pw(D*D*H,0.9541), WL=0.0070*pw(D*D*H,0.8846);
+    const WB=0.0040*pw(D*D*H,1.0699), WT=0.0353*pw(D*D*H,0.9714);
+    const VS=0.000076*pw(D*D*H,0.9115);
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},{v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+// ================================================================
+// PLANTATION > FOREST
+// ================================================================
+add({ id:'pl_teak', cls:'Plantation', sub:'Forest', name:'Teak Plantation (8–21 yrs) — สักปลูก', nameLocal:'สักปลูก (อายุ 8-21 ปี)',
+  bg:BG.green, tx:TX.green, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และกันตินันท์ ผิวสะอาด (2554)',
+  calc(D,H){
+    const WS=0.0271*pw(D*D*H,0.9435), WT=0.0358*pw(D*D*H,0.9468);
+    const VS=0.0001*pw(D*D*H,0.8904);
+      return [{v:'WS',l:'Stem Biomass (WS)',val:WS},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},
+      {v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
+  }
+});
+
+add({ id:'pl_eucalyptus', cls:'Plantation', sub:'Forest', name:'Eucalyptus Plantation — ยูคาลิปตัสปลูก', nameLocal:'ยูคาลิปตัส (สวนป่า)',
+  bg:BG.purple, tx:TX.purple, inputs:['D','H'], ref:'วสันต์ จันทร์แดง และคณะ (2553)',
+  calc(D,H){
+    const WS=0.26827*pw(D*D*H,0.973647), WB=0.00045*pw(D*D*H,1.26077);
+    const WL=0.10114*pw(D*D*H,0.46007), WR=0.01378*pw(D*D*H,0.87935);
+    const WT=WS+WB+WL;
+    return [{v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
+      {v:'WR',l:'Root (WR)',val:WR},
+      {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true}];
+  }
+});
+
+// ================================================================
+// APP STATE & LOGIC
+// ================================================================
+let state = { cls:null, subFilter:null, speciesId:null };
+
+function selectClass(cls){
+  state.cls = cls; state.subFilter=null; state.speciesId=null;
+  goStep(2);
+}
+
+function getSubclasses(cls){
+  const all = DB.filter(d=>d.cls===cls).map(d=>d.sub);
+  return [...new Set(all)];
+}
+
+function renderStep2(){
+  const subs = getSubclasses(state.cls);
+  // Default to first sub if none selected
+  if(!state.subFilter || !subs.includes(state.subFilter)) state.subFilter = subs[0];
+
+  document.getElementById('step2Title').textContent = `Select species — Class: ${state.cls}`;
+
+  // Module tabs
+  const tabDiv = document.getElementById('modTabs');
+  tabDiv.innerHTML = subs.map(s=>{
+    const sp = DB.find(d=>d.cls===state.cls && d.sub===s);
+    const bg = sp ? sp.bg : '#eee';
+    const tx = sp ? sp.tx : '#333';
+    const active = s===state.subFilter ? 'active' : '';
+    return `<span class="mod-tab ${active}" style="background:${bg};color:${tx}"
+      onclick="setSubFilter('${s}')">${s}</span>`;
+  }).join('');
+
+  renderSpeciesList();
+}
+
+function setSubFilter(sub){
+  state.subFilter = sub;
+  state.speciesId = null;
+  renderStep2();
+}
+
+function renderSpeciesList(){
+  const items = DB.filter(d=>d.cls===state.cls && d.sub===state.subFilter);
+  const div = document.getElementById('spList');
+  div.innerHTML = items.map(sp=>{
+    const sel = sp.id===state.speciesId ? 'selected' : '';
+    return `<span class="sp-btn ${sel}" style="background:${sp.bg};color:${sp.tx}"
+      onclick="selectSpecies('${sp.id}')">${sp.name}${sp.nameLocal?'<br><small style=\'opacity:.75\'>'+sp.nameLocal+'</small>':''}</span>`;
+  }).join('');
+}
+
+function selectSpecies(id){
+  state.speciesId = id;
+  renderSpeciesList();
+  goStep(3);
+}
+
+function renderStep3(){
+  const sp = DB.find(d=>d.id===state.speciesId);
+  if(!sp) return;
+  document.getElementById('step3Title').textContent = sp.name;
+
+  // Species info
+  document.getElementById('spInfo').innerHTML = `
+    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+      <span class="sp-btn" style="background:${sp.bg};color:${sp.tx};pointer-events:none;font-size:.75rem">
+        ${sp.cls} › ${sp.sub}</span>
+    </div>
+    <div><strong>${sp.name}</strong>${sp.nameLocal?'<br><span class="text-muted" style="font-size:.82rem">'+sp.nameLocal+'</span>':''}</div>
+    <div class="ref-text mt-1">📚 ${sp.ref}</div>
+    ${sp.fml?`<div class="formula-box mt-2"><span style="color:#666;font-size:.7rem">Formula:</span><br>${sp.fml}</div>`:''}
+    `;
+
+  // Input fields
+  const inp = sp.inputs;
+  let html = '';
+  if(inp.includes('D'))   html += inputField('D',   'D / DBH','Diameter at Breast Height (1.3 m)','cm','1–200');
+  if(inp.includes('H'))   html += inputField('H',   'H','Total tree height','m','1–80');
+  if(inp.includes('D0'))  html += inputField('D0',  'D₀','Basal diameter (at ground level)','cm','1–200');
+  if(inp.includes('HRP')) html += inputField('HRP', 'HRP','Height of rachis / petiole (palm)','m','0.5–20');
+  document.getElementById('inputFields').innerHTML = html;
+
+  // Clear results
+  document.getElementById('resultsPanel').innerHTML = `
+    <div class="text-center text-muted py-5">
+      <div style="font-size:2rem">📊</div>
+      <div>Enter measurements and click Calculate</div>
+    </div>`;
+}
+
+function inputField(id, label, hint, unit, range){
+  return `<div class="mb-3">
+    <label class="form-label">${label} <span class="text-muted">(${unit})</span></label>
+    <input type="number" id="inp_${id}" class="form-control" step="any" min="0"
+      placeholder="${hint} [${range} ${unit}]">
+    <div class="hint">${hint}</div>
+  </div>`;
+}
+
+function calculate(){
+  const sp = DB.find(d=>d.id===state.speciesId);
+  if(!sp) return;
+
+  const get = id => {
+    const el = document.getElementById('inp_'+id);
+    return el ? parseFloat(el.value)||0 : 0;
+  };
+  const D=get('D'), H=get('H'), D0=get('D0'), HRP=get('HRP');
+
+  // Validation
+  const inp = sp.inputs;
+  let err = '';
+  if(inp.includes('D') && D<=0)   err += 'D/DBH must be > 0. ';
+  if(inp.includes('H') && H<=0)   err += 'H must be > 0. ';
+  if(inp.includes('D0') && D0<=0) err += 'D₀ must be > 0. ';
+  if(inp.includes('HRP') && HRP<=0) err += 'HRP must be > 0. ';
+  if(err){
+    document.getElementById('resultsPanel').innerHTML =
+      `<div class="alert alert-warning"><strong>Input Error:</strong> ${err}</div>`;
+    return;
+  }
+
+  let results;
+  try {
+    results = sp.calc(D, H, D0, HRP);
+  } catch(e){
+    document.getElementById('resultsPanel').innerHTML =
+      `<div class="alert alert-danger">Calculation error: ${e.message}</div>`;
+    return;
+  }
+
+  // Find the "total" (AGB/WT) value for carbon calculation
+  const totalRow = results.find(r=>r.total);
+  const totalKg = totalRow ? totalRow.val : null;
+  const totalMg = totalKg !== null ? totalKg/1000 : null;
+  const carbonKg = totalKg !== null ? CARBON * totalKg : null;
+  const carbonMg = carbonKg !== null ? carbonKg/1000 : null;
+  const co2Kg    = carbonKg !== null ? carbonKg * CO2FAC : null;
+  const co2Mg    = co2Kg   !== null ? co2Kg/1000 : null;
+
+  // Store results globally for unit toggle
+  window._lastResults = { results, sp, totalKg, totalMg, carbonKg, carbonMg, co2Kg, co2Mg };
+  renderResults(false);
+}
+
+function renderResults(useMg){
+  const { results, sp, totalKg, totalMg, carbonKg, carbonMg, co2Kg, co2Mg } = window._lastResults;
+
+  const rows = results.map(r => {
+    if(r.isVol){
+      return `<tr><td><code>${r.v}</code></td><td>${r.l}</td>
+        <td class="text-end fw-semibold">${r.val.toFixed(5)}</td><td>m³</td></tr>`;
+    }
+    const cls = r.total ? 'agb-row' : '';
+    const val = useMg ? (r.val/1000).toFixed(5) : r.val.toFixed(3);
+    const unit = useMg ? 'Mg' : 'kg';
+    return `<tr class="${cls}">
+      <td><code>${r.v}</code></td><td>${r.l}</td>
+      <td class="text-end fw-semibold">${val}</td><td>${unit}</td></tr>`;
+  }).join('');
+
+  const tkVal = useMg ? totalMg : totalKg;
+  const ckVal = useMg ? carbonMg : carbonKg;
+  const co2Val = useMg ? co2Mg : co2Kg;
+  const unit = useMg ? 'Mg' : 'kg';
+
+  let carbonBlock = '';
+  if(carbonKg !== null){
+    carbonBlock = `
+      <hr class="my-2">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="fw-bold text-muted" style="font-size:.8rem">CARBON & CO₂</span>
+        <span class="unit-toggle ${useMg?'active':''}" onclick="renderResults(${!useMg})">
+          ${useMg?'→ Show kg':'→ Show Mg'}</span>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <div class="carbon-badge text-center">
+            <div style="font-size:.72rem;opacity:.8">Carbon Content</div>
+            <div style="font-size:1.25rem;font-weight:700">${ckVal.toFixed(useMg?5:3)}</div>
+            <div style="font-size:.72rem">${unit} C &nbsp;(×0.4899)</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="co2-badge text-center">
+            <div style="font-size:.72rem;opacity:.8">CO₂ Equivalent</div>
+            <div style="font-size:1.25rem;font-weight:700">${co2Val.toFixed(useMg?5:3)}</div>
+            <div style="font-size:.72rem">${unit} CO₂ &nbsp;(×3.667)</div>
+          </div>
+        </div>
+      </div>
+      <div class="result-note">Carbon fraction: 0.4899 — วสันต์ จันทร์แดง et al. (2553) &nbsp;|&nbsp; CO₂ = Carbon × 44/12</div>`;
+  }
+
+  const unitToggleTop = `<span class="unit-toggle ${useMg?'active':''}" onclick="renderResults(${!useMg})" title="Toggle kg ↔ Mg">
+    ${useMg?'Mg':'kg'}</span>`;
+
+  document.getElementById('resultsPanel').innerHTML = `
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span class="fw-bold" style="font-size:.88rem">Results</span>
+      <div class="d-flex gap-2 align-items-center">
+        ${unitToggleTop}
+        <button class="btn btn-sm btn-outline-secondary" style="font-size:.75rem" onclick="goStep(1)">🔄 New</button>
+      </div>
+    </div>
+    <div class="ref-text mb-2">📚 ${sp.ref}</div>
+    <table class="table table-sm result-table mb-2">
+      <thead><tr><th>Var</th><th>Component</th><th class="text-end">Value</th><th>Unit</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${tkVal!==null ? `<div class="text-center mb-2">
+      <span class="big-num">${tkVal.toFixed(useMg?5:2)}</span>
+      <span class="text-muted ms-1">${unit} AGB</span></div>` : ''}
+    ${carbonBlock}`;
+}
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+function goStep(n){
+  ['step1','step2','step3'].forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('hidden', i+1!==n);
+  });
+  // Progress pills
+  for(let i=1;i<=3;i++){
+    const pill=document.getElementById('sp'+i);
+    if(i<n){ pill.className='step-pill done'; }
+    else if(i===n){ pill.className='step-pill active'; }
+    else{ pill.className='step-pill'; }
+    const line=document.getElementById('pl'+i);
+    if(line) line.style.background = i<n ? '#81C784' : '#ddd';
+  }
+  const labels=['Select vegetation class','Select species / forest type','Enter measurements & view results'];
+  document.getElementById('stepLabel').textContent = labels[n-1];
+
+  if(n===2) renderStep2();
+  if(n===3) renderStep3();
+}
+</script>
+</body>
+</html>

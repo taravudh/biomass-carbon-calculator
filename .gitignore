@@ -1,0 +1,4 @@
+# Intermediate extraction files (not needed in repo)
+all_strings.txt
+shared_strings.txt
+theme_dump.txt
