@@ -208,11 +208,11 @@ const TX = { yellow:'#333', cream:'#333', red:'#fff', green:'#333',
 // ================================================================
 add({ id:'tver_gen', cls:'Forest', sub:'T-VER', name:'General / All Forest Types', nameLocal:'ทั่วไป (ป่าทุกประเภท)',
   bg:BG.yellow, tx:TX.yellow, inputs:['D','H'], ref:'Ogawa et al. (1965)',
-  fml:'WS=0.0396(D²H)^0.9326 | WB=0.003487(D²H)^1.027 | WL=(WS+WB+0.025)/28',
+  fml:'WS=0.0396(D²H)^0.9326 | WB=0.003487(D²H)^1.027 | WL=((28/(WS+WB))+0.025)⁻¹',
   calc(D,H){
     const WS = 0.0396*pw(D*D*H,0.9326);
     const WB = 0.003487*pw(D*D*H,1.027);
-    const WL = (WS+WB+0.025)/28;
+    const WL = 1/(28/(WS+WB)+0.025);
     const GB = WS+WB+WL;
     return [
       {v:'WS',l:'Stem Biomass',val:WS},
@@ -259,7 +259,7 @@ add({ id:'tver_bong', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่บงป
 add({ id:'tver_bongdam', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่บงดำ', nameLocal:'ไผ่บงดำ',
   bg:BG.white, tx:TX.white, inputs:['D'], ref:'Kutintara et al. (1995)',
   calc(D){
-    const WT = 0.49522*pw(D,0.8726);
+    const WT = 0.49522*pw(D*D,0.8726);
     return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
   }
 });
@@ -267,7 +267,7 @@ add({ id:'tver_bongdam', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่บง
 add({ id:'tver_khaolam', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่ข้าวหลาม', nameLocal:'ไผ่ข้าวหลาม',
   bg:BG.purple, tx:TX.purple, inputs:['D'], ref:'Kutintara et al. (1995)',
   calc(D){
-    const WT = 0.17446*pw(D,1.0437);
+    const WT = 0.17446*pw(D*D,1.0437);
     return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
   }
 });
@@ -275,7 +275,7 @@ add({ id:'tver_khaolam', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่ข้
 add({ id:'tver_rai', cls:'Forest', sub:'T-VER', name:'Bamboo ไผ่ไร่ และไผ่ผาก', nameLocal:'ไผ่ไร่/ไผ่ผาก',
   bg:BG.white, tx:TX.white, inputs:['D'], ref:'Kutintara et al. (1995)',
   calc(D){
-    const WT = 0.2425*pw(D,1.0751);
+    const WT = 0.2425*pw(D*D,1.0751);
     return [{v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
   }
 });
@@ -298,7 +298,7 @@ add({ id:'f45_dry', cls:'Forest', sub:'DBH > 4.5 cm', name:'Dry Evergreen / Hill
     const WB = 0.00893*pw(D*D*H,0.977);
     const WL = 0.0140*pw(D*D*H,0.669);
     const WT = WS+WB+WL;
-    const WR = 0.0313*pw(D*D*H,0.805);
+    const WR = 0.0313*D*D*pw(H,0.805);
     return [
       {v:'WS',l:'Stem',val:WS},{v:'WB',l:'Branch',val:WB},{v:'WL',l:'Leaf',val:WL},
       {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},
@@ -386,17 +386,17 @@ add({ id:'f45_ruak', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่ร
 
 add({ id:'f45_bongdam2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่บงดำ', nameLocal:'ไผ่บงดำ',
   bg:BG.red, tx:TX.red, inputs:['D'], ref:'Kutintara et al. (1995)',
-  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.49522*pw(D,0.8726),total:true}]; }
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.49522*pw(D*D,0.8726),total:true}]; }
 });
 
 add({ id:'f45_khaolam2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่ข้าวหลาม', nameLocal:'ไผ่ข้าวหลาม',
   bg:BG.white, tx:TX.white, inputs:['D'], ref:'Kutintara et al. (1995)',
-  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.17446*pw(D,1.0437),total:true}]; }
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.17446*pw(D*D,1.0437),total:true}]; }
 });
 
 add({ id:'f45_rai2', cls:'Forest', sub:'DBH > 4.5 cm', name:'Bamboo ไผ่ไร่/ไผ่ผาก', nameLocal:'ไผ่ไร่ และไผ่ผาก',
   bg:BG.green, tx:TX.green, inputs:['D'], ref:'Kutintara et al. (1995)',
-  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.2425*pw(D,1.0751),total:true}]; }
+  calc(D){ return [{v:'WT',l:'Total Biomass (WT)',val:0.2425*pw(D*D,1.0751),total:true}]; }
 });
 
 // ================================================================
@@ -487,8 +487,8 @@ add({ id:'tree_liana', cls:'Tree', sub:'Liana', name:'Liana / Climbing Plants', 
 add({ id:'bam_thyrso', cls:'Tree', sub:'Bamboo', name:'Thyrsostachys siamensis (ไผ่รวก)', nameLocal:'ไผ่รวก',
   bg:BG.yellow, tx:TX.yellow, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา (2554)',
   calc(D,H){
-    const WC = 0.0691512*pw(D*D*H,0.793);
-    const WT = 0.0883689*pw(D*D*H,0.7703);
+    const WC = 0.0691512*D*D*pw(H,0.793);
+    const WT = 0.0883689*D*D*pw(H,0.7703);
     const WBL = WT-WC;
     return [{v:'WC',l:'Culm (WC)',val:WC},{v:'WB+L',l:'Branch+Leaf (WB+L)',val:WBL},
       {v:'WT',l:'Total Biomass (WT)',val:WT,total:true}];
@@ -743,7 +743,7 @@ add({ id:'rub_teng', cls:'Tree', sub:'Rubber Family', name:'เต็ง (Shorea
 // ================================================================
 add({ id:'dead_mel', cls:'Tree', sub:'Dead Tree', name:'Melaleuca (dead standing)', nameLocal:'เสม็ด (ตายยืนต้น)',
   bg:BG.cream, tx:TX.cream, inputs:['D','H'], ref:'ขรรค์ชัย รื้นนาค และคณะ (2558)',
-  calc(D,H){ return [{v:'W',l:'Dead Wood Biomass (W)',val:0.0381*pw(D*D*H,0.8952),total:true}]; }
+  calc(D,H){ return [{v:'W',l:'Dead Wood Biomass (W)',val:0.0381*D*D*pw(H,0.8952),total:true}]; }
 });
 
 // ================================================================
@@ -893,9 +893,9 @@ add({ id:'tr_acacia', cls:'Tree', sub:'Forest', name:'Acacia — กระถิ
 add({ id:'pl_teak', cls:'Plantation', sub:'Forest', name:'Teak Plantation (8–21 yrs) — สักปลูก', nameLocal:'สักปลูก (อายุ 8-21 ปี)',
   bg:BG.green, tx:TX.green, inputs:['D','H'], ref:'ชิงชัย วิริยะบัญชา และกันตินันท์ ผิวสะอาด (2554)',
   calc(D,H){
-    const WS=0.0271*pw(D*D*H,0.9435), WT=0.0358*pw(D*D*H,0.9468);
-    const VS=0.0001*pw(D*D*H,0.8904);
-      return [{v:'WS',l:'Stem Biomass (WS)',val:WS},
+    const WS=0.0271*D*D*pw(H,0.9435), WT=0.0358*D*D*pw(H,0.9468);
+    const VS=0.0001*D*D*pw(H,0.8904);
+    return [{v:'WS',l:'Stem Biomass (WS)',val:WS},
       {v:'WT',l:'Total Aboveground (WT)',val:WT,total:true},
       {v:'VS',l:'Stem Volume (m³)',val:VS,isVol:true}];
   }
